@@ -1,5 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState,useEffect } from 'react'
 import './WeatherApp.css'
+import GoogleButton from 'react-google-button'
+import { auth,signOut,signInWithPopup,googleAuthProvider,setPersistence,browserLocalPersistence } from '../Firebase'
+import { Button } from '@mui/material'
+
 
 import search_icon from '../Assets/search.png'
 import clear_icon from '../Assets/clear.png'
@@ -16,13 +20,37 @@ export const WeatherApp = () => {
 
   const [wicon,setWicon] = useState(cloud_icon);
 
-  const search = async () => {
-      const element = document.getElementsByClassName("cityInput");
-      if(element[0].value==="")
-      {
-        return 0;
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    setPersistence(auth, browserLocalPersistence)
+    .then(() => {
+      // Now, configure Firebase for persistent login
+      if (auth.currentUser) {
+        setUser(auth.currentUser);
       }
-      let url = `https://api.openweathermap.org/data/2.5/weather?q=${element[0].value}&units=Metric&appid=${api_key}`;
+      
+    })
+    .catch((error) => {
+      console.error(error.message);
+    });
+}, []);
+
+
+  const search = async () => {
+      const element = document.getElementsByClassName("cityInput")[0];
+      if(element.value==="")
+      {
+        alert('Kuch bhi');
+        return ;
+      }
+      if (user){
+      
+      if (element.value)
+      {
+
+      let city= element.value ;
+      let url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=Metric&appid=${api_key}`;
 
       let response = await fetch(url);
       let data = await response.json();
@@ -68,14 +96,54 @@ export const WeatherApp = () => {
       {
         setWicon(clear_icon);
       }
-
+    }
+      }
+      else{
+        alert('Sign In');
+      }
 
   }
 
+  const handleGoogleSignOut = () => {
+    signOut(auth)
+      .then(() => {
+        setUser(null);
+      })
+      .catch((error) => {
+        alert(error.message);
+      });
+  }
+
+  const handleKeyPress = (event) => {
+    if (event.key === 'Enter') {
+      search();
+    }
+  };
+  
+   
+  
+  const handleGoogleSignIn = () => {
+    signInWithPopup(auth, googleAuthProvider)
+      .then((result) => {
+        const user = result.user;
+        
+     
+        setUser(user);
+      })
+      .catch((error) => {
+        const errorMessage = error.message;
+        alert(errorMessage);
+      });
+  }
+
   return (
+    <>
+            <GoogleButton className='gbtn'  onClick={handleGoogleSignIn} style={{ display: user ? 'none' : 'block' }} />
+            <Button className='logout' onClick={handleGoogleSignOut} style={{ display: user ? 'block' : 'none' }}>Logout</Button>
     <div className='container'>
         <div className="top-bar">
-            <input type="text" className="cityInput" placeholder='Search'/>
+        <input type="text" className='cityInput' placeholder='Enter city' onKeyDown={handleKeyPress}/>
+            
             <div className="search-icon" onClick={()=>{search()}}>
                 <img src={search_icon} alt="" />
             </div>
@@ -102,5 +170,6 @@ export const WeatherApp = () => {
           </div>
         </div>
     </div>
+    </>
   )
 }
